@@ -1,2 +1,1 @@
-# csang
-A one page Angular.js application. 
+# Module 1 Solution
