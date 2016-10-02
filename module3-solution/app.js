@@ -1,53 +1,76 @@
 (function () {
     'use strict';
 
-    angular.module('ShoppingListCheckOff', [])
-    .controller('ToBuyShoppingController', ToBuyShoppingController)
-    .controller('AlreadyBoughtShoppingController', AlreadyBoughtShoppingController)
-    .service('ShoppingListCheckOffService', ShoppingListCheckOffService);
+    angular.module('NarrowItDownApp', [])
+    .controller('NarrowItDownController', NarrowItDownController)
+    .service('MenuSearchService', MenuSearchService)
+    .constant('ApiPath', "https://davids-restaurant.herokuapp.com/menu_items.json")
+    .directive('foundItems', FoundItemsDirective);
 
-    ToBuyShoppingController.$inject = ['ShoppingListCheckOffService'];
-    function ToBuyShoppingController(ShoppingListCheckOffService) {
-        var toBuy = this;
+    function FoundItemsDirective() {
+        var ddo = {
+            restrict: 'E',
+            templateUrl: 'foundItems.html',
+            scope: {
+                found: '<',
+                onRemove: '&'
+            },
+            controller: FoundItemsDirectiveController,
+            controllerAs: 'ctrl',
+            bindToController: true
+        };
+        return ddo;
+    }
 
-        toBuy.items = ShoppingListCheckOffService.getItemsToBuy();
+    function FoundItemsDirectiveController() {
+    }
 
-        toBuy.purchase = function (itemIndex) {
-            ShoppingListCheckOffService.purchase(itemIndex);
+    NarrowItDownController.$inject = ['MenuSearchService'];
+    function NarrowItDownController(MenuSearchService) {
+        var ctrl = this;
+        ctrl.found = undefined;
+        ctrl.searchTerm = "";
+        ctrl.searchItems = function () {
+            if (ctrl.searchTerm.length > 0) {
+                var promise = MenuSearchService.getMatchedMenuItems(ctrl.searchTerm);
+                promise.then(function (result) {
+                    result.length > 0 ? ctrl.found = result : ctrl.found = [];
+                })
+                .catch(function (error) {
+                    ctrl.found = [];
+                    console.log(error);
+                })
+            } else {
+                ctrl.found = [];
+            }
+        };
+
+        ctrl.removeItem = function (index) {
+            ctrl.found.splice(index, 1);
         };
     };
 
-    AlreadyBoughtShoppingController.$inject = ['ShoppingListCheckOffService'];
-    function AlreadyBoughtShoppingController(ShoppingListCheckOffService) {
-        var alreadyBought = this;
-
-        alreadyBought.items = ShoppingListCheckOffService.getItemsAlreadyBought();
-    };
-
-    function ShoppingListCheckOffService() {
+    MenuSearchService.$inject = ['$http', 'ApiPath']
+    function MenuSearchService($http, ApiPath) {
         var service = this;
-        var itemsToBuy = [
-            { name: 'cookies', quantity: 5 },
-            { name: 'crackers', quantity: 8 },
-            { name: 'chips', quantity: 13 },
-            { name: 'nuts and trail mixes', quantity: 21 },
-            { name: 'pretzels', quantity: 34 },
-            { name: 'granola bars', quantity: 55 } 
-        ];
-        var itemsAlreadyBought = [];
-
-        service.getItemsToBuy = function () {
-            return itemsToBuy;
-        };
-
-        service.getItemsAlreadyBought = function () {
-            return itemsAlreadyBought;
-        };
-
-        service.purchase = function (itemIndex) {
-            itemsAlreadyBought.push(itemsToBuy.splice(itemIndex, 1)[0]);
+        service.getMatchedMenuItems = function (searchTerm) {
+            return $http({
+                method: "GET",
+                url: ApiPath
+            }).then(function (result) {
+                var foundItems = [];
+                if (result.data["menu_items"] !== undefined) {
+                    var i = 0;
+                    var len = result.data["menu_items"].length;
+                    for (i = 0; i < len; i++) {
+                        if (result.data["menu_items"][i].description.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1) {
+                            foundItems.push(result.data["menu_items"][i]);
+                        }
+                    };
+                }
+                return foundItems;
+            });
         };
     };
-
 
 })();

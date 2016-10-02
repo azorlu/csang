@@ -50,3 +50,11 @@ input[type="text"] {
     transform: rotate(360deg);
   }
 }
+
+.odd {
+    background-color:#ddd;
+}
+
+.even {
+    background-color:#eee;
+}
